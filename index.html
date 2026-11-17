@@ -81,15 +81,13 @@
   .item .txt:focus{cursor:text}
   .item .txt:empty::before{content:"Type here";color:#8a93a3}
   .item svg,.item img{display:block;width:100%;height:100%;pointer-events:none;user-select:none;-webkit-user-select:none}
-  .item .del,.item .rs{position:absolute;display:none}
-  .item.sel .del,.item.sel .rs{display:block}
-  .item .del{top:-12px;right:-12px;width:22px;height:22px;border-radius:50%;border:none;background:var(--bad);color:#fff;
-    font:700 14px/22px system-ui,sans-serif;text-align:center;cursor:pointer;padding:0}
-  .item .rs{right:-9px;bottom:-9px;width:14px;height:14px;border-radius:4px;background:#fff;border:2px solid var(--accent);cursor:nwse-resize}
-  @media (pointer:coarse){
-    .item .del{top:-17px;right:-17px;width:30px;height:30px;line-height:30px;font-size:17px}
-    .item .rs{right:-14px;bottom:-14px;width:24px;height:24px;border-radius:7px}
-  }
+  /* Signatures only: a small dot just outside the corner, so it never covers the ink.
+     Text and marks are sized from the strip instead. */
+  .item .rs{position:absolute;display:none;right:-15px;bottom:-15px;width:12px;height:12px;border-radius:50%;
+    background:var(--accent);border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.45);cursor:nwse-resize}
+  .item .rs::before{content:"";position:absolute;inset:-9px}
+  @media (pointer:coarse){.item .rs::before{inset:-15px}}
+  .item.sel .rs{display:block}
   .item.drag{opacity:.85}
 
   /* the options strip, above the tools: what the current tool or item can change */
@@ -226,7 +224,7 @@
     <label class="hbtn" for="file">Open PDF</label>
   </div>
   <div id="pages"><div class="empty">Loading…</div></div>
-  <p class="help">Drag anything to move it, use the corner square to resize, × to remove. Pinch to zoom on a phone. Your PDF never leaves this device.</p>
+  <p class="help">Drag anything to move it. Size and Delete are in the strip above the tools. Pinch to zoom on a phone. Your PDF never leaves this device.</p>
 </main>
 
 <div class="optbar" id="optbar"></div>
@@ -264,7 +262,7 @@ const store = {
 };
 
 /* Bump with VERSION in sw.js on every ship. */
-const APP_VERSION = '4';
+const APP_VERSION = '5';
 const APP_URL = 'https://jpasserin.github.io/filler/';
 
 const INKS = [['#15171c', 'Black'], ['#1e3fae', 'Blue']];
@@ -371,10 +369,11 @@ function renderOpts() {
         `<option value="${f}"${f === S.dateFmt ? ' selected' : ''}>${fmtDate(new Date(), f)}</option>`).join('')}</select></div>`);
   } else if (ctx === 'check' || ctx === 'cross') {
     parts.push(swatchesHtml(it ? it.color : S.ink));
+    parts.push(`<div class="opt"><span class="lab">Size</span><button class="gbtn" data-act="mark-">−</button><span class="num">${it ? Math.round(it.w) : Math.round(S.markSize)}</span><button class="gbtn" data-act="mark+">+</button></div>`);
     if (!it) parts.push(`<span class="hint">Tap each box to mark it.</span>`);
   } else if (ctx === 'sign') {
     const s = getSig(activeSig);
-    if (it) parts.push(`<span class="hint">Drag the corner to resize.</span>`);
+    if (it) parts.push(`<div class="opt"><span class="lab">Size</span><button class="gbtn" data-act="sig-">−</button><button class="gbtn" data-act="sig+">+</button></div><span class="hint">or drag the blue dot.</span>`);
     else if (s) parts.push(`<button class="sigchip" data-act="sigs"><span class="th"><img src="${s.src}" alt=""></span>${esc(s.name)} ▾</button><span class="hint">Tap the page to sign.</span>`);
     else parts.push(`<button class="gbtn primary" data-act="sigs">Create a signature</button>`);
   } else {
@@ -397,6 +396,16 @@ $('#optbar').addEventListener('click', e => {
     if (it && it.type === 'text') { pushUndo(); it.size = clamp(it.size + d, 5, 72); S.textSize = it.size; placeEl(it); }
     else S.textSize = clamp(S.textSize + d, 5, 72);
     store.set('textSize', S.textSize); renderOpts();
+  } else if (act === 'mark-' || act === 'mark+') {
+    const d = act === 'mark+' ? 1 : -1;
+    if (it && (it.type === 'check' || it.type === 'cross')) { pushUndo(); it.w = it.h = clamp(Math.round(it.w) + d, 5, 150); S.markSize = it.w; placeEl(it); }
+    else S.markSize = clamp(Math.round(S.markSize) + d, 5, 150);
+    store.set('markSize', S.markSize); renderOpts();
+  } else if (act === 'sig-' || act === 'sig+') {
+    if (it && it.type === 'sign') {
+      pushUndo(); const k = act === 'sig+' ? 1.1 : 1 / 1.1;
+      it.w = clamp(it.w * k, 20, 600); it.h = it.w / it.aspect; placeEl(it); store.set('sigW', Math.round(it.w));
+    }
   } else if (act === 'sigs') openSigSheet();
   else if (act === 'delete' && it) removeItem(it.id, true);
 });
@@ -549,12 +558,11 @@ function makeEl(it) {
   } else {
     el.innerHTML = markSvg(it.type);
   }
-  const del = document.createElement('button'); del.className = 'del'; del.textContent = '×'; del.title = 'Remove'; del.setAttribute('aria-label', 'Remove');
-  del.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); });
-  del.addEventListener('click', e => { e.stopPropagation(); removeItem(it.id, true); });
-  const rs = document.createElement('span'); rs.className = 'rs'; rs.title = 'Drag to resize';
-  rs.addEventListener('pointerdown', e => onResizeDown(e, it));
-  el.append(del, rs);
+  if (it.type === 'sign') {
+    const rs = document.createElement('span'); rs.className = 'rs'; rs.title = 'Drag to resize';
+    rs.addEventListener('pointerdown', e => onResizeDown(e, it));
+    el.append(rs);
+  }
   el.addEventListener('mousedown', e => { if (!(body && document.activeElement === body)) e.preventDefault(); });
   el.addEventListener('pointerdown', e => onItemDown(e, it));
   pg.layer.append(el); els.set(it.id, el); placeEl(it);
@@ -647,7 +655,7 @@ function placeAt(pg, x, y) {
 
 function onItemDown(e, it) {
   if (e.button > 0 || pinch) return;
-  if (e.target.closest('.del, .rs')) return;
+  if (e.target.closest('.rs')) return;
   const el = els.get(it.id);
   const body = it.type === 'text' ? el.firstChild : null;
   if (body && document.activeElement === body) return; // editing: let the caret work

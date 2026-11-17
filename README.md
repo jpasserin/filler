@@ -20,7 +20,7 @@ It installs like the other apps in the family (Tally, Slate, Bench): on a phone 
    | X | `X` | ✗ mark. Stays active too |
    | Sign | `S` | Places the chosen signature |
 
-3. Drag the corner square to resize, × or **Delete** to remove, **Undo** in the header (`Ctrl+Z`). Pinch to zoom on a phone.
+3. The strip above the tools has **Size −/+** and **Delete** for the selected item (signatures can also be resized by dragging the blue dot). **Undo** is in the header (`Ctrl+Z`). Pinch to zoom on a phone.
 4. **Download** saves `<name>-filled.pdf`. On a phone it opens the share sheet, so you can save it to Files or send it straight away.
 
 ## Signatures
