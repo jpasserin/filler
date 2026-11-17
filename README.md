@@ -2,9 +2,11 @@
 
 A single-page web app for filling in PDF forms fast: type text, drop in today's date, tick boxes with a check or an X, and sign. Everything runs in your browser. The PDF is never uploaded anywhere.
 
+**Live app: https://jpasserin.github.io/pdf-filler/**
+
 ## Use it
 
-Open `index.html` in a browser (or the GitHub Pages URL for this repo), then:
+Open the live app (or `index.html` from a local clone), then:
 
 1. **Open PDF** (or drag a PDF onto the window). A sample form loads at start so you can try the tools.
 2. Pick a tool and click on the page:
