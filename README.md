@@ -1,40 +1,48 @@
-# Quick PDF Filler
+# PDF Filler
 
-A single-page web app for filling in PDF forms fast: type text, drop in today's date, tick boxes with a check or an X, and sign. Everything runs in your browser. The PDF is never uploaded anywhere.
+Fill in PDF forms fast, on a phone or a computer: type text, drop in today's date, tick boxes with a check or an X, and sign. Everything runs on your device. The PDF is never uploaded.
 
 **Live app: https://jpasserin.github.io/pdf-filler/**
 
+It installs like the other apps in the family (Tally, Slate, Bench): on a phone use *Share → Add to Home Screen* (iOS) or *Install app* (Android/Chrome). Once installed it works offline.
+
 ## Use it
 
-Open the live app (or `index.html` from a local clone), then:
-
-1. **Open PDF** (or drag a PDF onto the window). A sample form loads at start so you can try the tools.
-2. Pick a tool and click on the page:
+1. **Open** a PDF (or drag one onto the window). A sample form loads at start so you can try the tools.
+2. Pick a tool in the bottom bar and tap the page:
 
    | Tool | Key | What it does |
    |---|---|---|
-   | Select | `V` | Click to select, drag to move |
-   | Text | `T` | Click and type. Click again later to edit |
-   | Date | `D` | Places today's date (format picker in the toolbar) |
+   | Select | `V` | Tap to select, drag to move |
+   | Text | `T` | Tap and type. Tap it again later to edit |
+   | Date | `D` | Today's date (format picker in the strip above the tools) |
    | Check | `C` | ✓ mark. Stays active so you can tick several boxes |
    | X | `X` | ✗ mark. Stays active too |
-   | Signature | `S` | Draw it once, then click to place it |
+   | Sign | `S` | Places the chosen signature |
 
-3. Drag the corner square to resize (text size, mark size, signature width). `Delete` removes the selected item, arrow keys nudge it (`Shift` for bigger steps), `Ctrl+Z` undoes.
-4. **Download PDF** saves `<name>-filled.pdf` with everything drawn into the page.
+3. Drag the corner square to resize, × or **Delete** to remove, **Undo** in the header (`Ctrl+Z`). Pinch to zoom on a phone.
+4. **Download** saves `<name>-filled.pdf`. On a phone it opens the share sheet, so you can save it to Files or send it straight away.
 
-The ink color (black or blue), text size, date format and your signature are remembered in this browser's local storage. Untick "Remember on this device" in the signature dialog if you don't want the signature kept.
+## Signatures
+
+Keep as many as you need, one per person (you, your partner…). Each one is made one of three ways:
+
+- **Draw** it with a finger, stylus or mouse.
+- **Type** a name and pick one of eight handwriting fonts.
+- **Upload** a photo or scan of a signature on white paper. The paper is removed automatically and the ink recolored black or blue. A *Clean-up* slider handles shadows or faint ink.
+
+Signatures are saved in this browser's storage and are there next time you open the app. They never leave the device. To use them on another phone or computer, create them there too.
 
 ## How it works
 
-- [pdf.js](https://mozilla.github.io/pdf.js/) renders the pages to canvas.
+- [pdf.js](https://mozilla.github.io/pdf.js/) renders the pages; [pdf-lib](https://pdf-lib.js.org/) writes the final file (text in Helvetica, marks as vector lines, signatures as trimmed PNGs).
 - Placed items are stored in PDF points, so zooming doesn't move them.
-- [pdf-lib](https://pdf-lib.js.org/) writes the final file: text in Helvetica, marks as vector lines, the signature as a trimmed PNG.
+- `sw.js` caches the app, the libraries and the handwriting fonts for offline use. Bump `CACHE` in it when shipping a change.
 
-No build step and no server. Both libraries load from a CDN.
+No build step and no server: `index.html` is the whole app.
 
 ## Limits
 
-- Pages with a `/Rotate` setting may get items in the wrong spot in the download (you get a warning when that happens).
-- Text uses Helvetica's character set. Characters outside it (emoji, most non-Latin scripts) are replaced with `?`.
+- Pages with a `/Rotate` setting may get items in the wrong spot in the download (you get a warning).
+- Text uses Helvetica's character set. Characters outside it (emoji, most non-Latin scripts) become `?`.
 - It draws on top of the page. It doesn't fill the PDF's own form fields.
