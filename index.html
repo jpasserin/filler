@@ -81,12 +81,12 @@
   .item .txt:focus{cursor:text}
   .item .txt:empty::before{content:"Type here";color:#8a93a3}
   .item svg,.item img{display:block;width:100%;height:100%;pointer-events:none;user-select:none;-webkit-user-select:none}
-  /* Signatures only: a small dot just outside the corner, so it never covers the ink.
-     Text and marks are sized from the strip instead. */
-  .item .rs{position:absolute;display:none;right:-15px;bottom:-15px;width:12px;height:12px;border-radius:50%;
-    background:var(--accent);border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.45);cursor:nwse-resize}
+  /* Resize handle: an outline only, just outside the corner, so what's under it stays readable.
+     A wider invisible area keeps it easy to grab, more so on touch screens. */
+  .item .rs{position:absolute;display:none;right:-13px;bottom:-13px;width:11px;height:11px;border-radius:3px;
+    background:transparent;border:1.5px solid rgba(59,130,246,.75);cursor:nwse-resize}
   .item .rs::before{content:"";position:absolute;inset:-9px}
-  @media (pointer:coarse){.item .rs::before{inset:-15px}}
+  @media (pointer:coarse){.item .rs{width:15px;height:15px;right:-17px;bottom:-17px} .item .rs::before{inset:-14px}}
   .item.sel .rs{display:block}
   .item.drag{opacity:.85}
 
@@ -224,7 +224,7 @@
     <label class="hbtn" for="file">Open PDF</label>
   </div>
   <div id="pages"><div class="empty">Loading…</div></div>
-  <p class="help">Drag anything to move it. Size and Delete are in the strip above the tools. Pinch to zoom on a phone. Your PDF never leaves this device.</p>
+  <p class="help">Drag anything to move it, or its corner square to resize. Size and Delete are also in the strip above the tools. Pinch to zoom on a phone. Your PDF never leaves this device.</p>
 </main>
 
 <div class="optbar" id="optbar"></div>
@@ -262,7 +262,7 @@ const store = {
 };
 
 /* Bump with VERSION in sw.js on every ship. */
-const APP_VERSION = '5';
+const APP_VERSION = '6';
 const APP_URL = 'https://jpasserin.github.io/filler/';
 
 const INKS = [['#15171c', 'Black'], ['#1e3fae', 'Blue']];
@@ -373,7 +373,7 @@ function renderOpts() {
     if (!it) parts.push(`<span class="hint">Tap each box to mark it.</span>`);
   } else if (ctx === 'sign') {
     const s = getSig(activeSig);
-    if (it) parts.push(`<div class="opt"><span class="lab">Size</span><button class="gbtn" data-act="sig-">−</button><button class="gbtn" data-act="sig+">+</button></div><span class="hint">or drag the blue dot.</span>`);
+    if (it) parts.push(`<div class="opt"><span class="lab">Size</span><button class="gbtn" data-act="sig-">−</button><button class="gbtn" data-act="sig+">+</button></div><span class="hint">or drag the corner square.</span>`);
     else if (s) parts.push(`<button class="sigchip" data-act="sigs"><span class="th"><img src="${s.src}" alt=""></span>${esc(s.name)} ▾</button><span class="hint">Tap the page to sign.</span>`);
     else parts.push(`<button class="gbtn primary" data-act="sigs">Create a signature</button>`);
   } else {
@@ -558,11 +558,9 @@ function makeEl(it) {
   } else {
     el.innerHTML = markSvg(it.type);
   }
-  if (it.type === 'sign') {
-    const rs = document.createElement('span'); rs.className = 'rs'; rs.title = 'Drag to resize';
-    rs.addEventListener('pointerdown', e => onResizeDown(e, it));
-    el.append(rs);
-  }
+  const rs = document.createElement('span'); rs.className = 'rs'; rs.title = 'Drag to resize';
+  rs.addEventListener('pointerdown', e => onResizeDown(e, it));
+  el.append(rs);
   el.addEventListener('mousedown', e => { if (!(body && document.activeElement === body)) e.preventDefault(); });
   el.addEventListener('pointerdown', e => onItemDown(e, it));
   pg.layer.append(el); els.set(it.id, el); placeEl(it);

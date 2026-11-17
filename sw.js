@@ -1,7 +1,7 @@
 /* sw.js — cache-first, so the installed app opens without the network.
    Bump VERSION (and APP_VERSION in index.html) on every ship; a stale worker
    would keep serving the old app otherwise. */
-const VERSION = '5';
+const VERSION = '6';
 const CACHE = 'filler-v' + VERSION;
 /* Pinned CDN files never change, so they live in their own cache that survives a ship. */
 const CDN_CACHE = 'filler-cdn';
