@@ -1,8 +1,8 @@
 {
-  "name": "PDF Filler",
-  "short_name": "PDF Filler",
+  "name": "Filler",
+  "short_name": "Filler",
   "description": "Fill PDF forms: text, date, check marks and signatures. Nothing is uploaded.",
-  "id": "/pdf-filler/",
+  "id": "/filler/",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

@@ -1,6 +1,6 @@
 /* sw.js — cache-first, so the installed app opens without the network.
    Bump CACHE on every ship; a stale worker would keep serving the old app otherwise. */
-const CACHE = 'pdf-filler-v2';
+const CACHE = 'filler-v3';
 const FILES = ['./', './index.html', './manifest.webmanifest',
   './icon.svg', './icon-180.png', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 /* The libraries and handwriting fonts come from CDNs; they are cached the first time they load. */

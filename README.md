@@ -1,8 +1,8 @@
-# PDF Filler
+# Filler
 
 Fill in PDF forms fast, on a phone or a computer: type text, drop in today's date, tick boxes with a check or an X, and sign. Everything runs on your device. The PDF is never uploaded.
 
-**Live app: https://jpasserin.github.io/pdf-filler/**
+**Live app: https://jpasserin.github.io/filler/**
 
 It installs like the other apps in the family (Tally, Slate, Bench): on a phone use *Share → Add to Home Screen* (iOS) or *Install app* (Android/Chrome). Once installed it works offline.
 
