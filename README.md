@@ -37,7 +37,8 @@ Signatures are saved in this browser's storage and are there next time you open 
 
 - [pdf.js](https://mozilla.github.io/pdf.js/) renders the pages; [pdf-lib](https://pdf-lib.js.org/) writes the final file (text in Helvetica, marks as vector lines, signatures as trimmed PNGs).
 - Placed items are stored in PDF points, so zooming doesn't move them.
-- `sw.js` caches the app, the libraries and the handwriting fonts for offline use. Bump `CACHE` in it when shipping a change.
+- `sw.js` caches the app, the libraries and the handwriting fonts for offline use. When shipping a change, bump `VERSION` in `sw.js` and `APP_VERSION` in `index.html` together. It only clears its own `filler-*` caches, since the other apps share the `jpasserin.github.io` site.
+- Tap the **Filler.** name for About: the version running, the offline copy, a Hard reload, and how to install it (with a QR code on a computer to open it on your phone).
 
 No build step and no server: `index.html` is the whole app.
 
