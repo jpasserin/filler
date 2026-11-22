@@ -236,6 +236,7 @@
   <button data-tool="check" title="Check mark (C)"><svg viewBox="0 0 24 24" style="stroke-width:2.4"><path d="M5 12.5l4.5 4.5L19 7"/></svg><span>Check</span><kbd>C</kbd></button>
   <button data-tool="cross" title="X mark (X)"><svg viewBox="0 0 24 24" style="stroke-width:2.4"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg><span>X</span><kbd>X</kbd></button>
   <button data-tool="sign" title="Signature (S)"><svg viewBox="0 0 24 24"><path d="M3 16c2.5 0 3.5-8 6-8s.5 8 3.5 8 2.5-4 4.5-4 1.5 2 4 2M3 20h18"/></svg><span>Sign</span><kbd>S</kbd></button>
+  <button data-tool="init" title="Initials (I)"><svg viewBox="0 0 24 24"><path d="M3 18l4-12 4 12M4.4 14h5.2M14 18V6h3.4a3 3 0 0 1 0 6H14h4a3 3 0 0 1 0 6z"/></svg><span>Initials</span><kbd>I</kbd></button>
 </nav>
 
 <div class="sheetwrap" id="sheetwrap" hidden><div class="scrim" id="scrim"></div><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
@@ -262,7 +263,7 @@ const store = {
 };
 
 /* Bump with VERSION in sw.js on every ship. */
-const APP_VERSION = '6';
+const APP_VERSION = '7';
 const APP_URL = 'https://jpasserin.github.io/filler/';
 
 const INKS = [['#15171c', 'Black'], ['#1e3fae', 'Blue']];
@@ -283,11 +284,23 @@ if (!sigs) {
   store.set('sigs', sigs);
 }
 let activeSig = store.get('activeSig', sigs[0] ? sigs[0].id : null);
+/* Saved initials, same shape; one set per person. */
+let inits = store.get('inits', []);
+let activeInit = store.get('activeInit', inits[0] ? inits[0].id : null);
 const saveSigs = () => {
-  if (!store.set('sigs', sigs)) toast('Could not save: this browser is out of storage space. Delete a signature and try again.', 5000);
-  store.set('activeSig', activeSig);
+  if (!store.set('sigs', sigs) || !store.set('inits', inits)) toast('Could not save: this browser is out of storage space. Delete a signature and try again.', 5000);
+  store.set('activeSig', activeSig); store.set('activeInit', activeInit);
 };
-const getSig = id => sigs.find(s => s.id === id) || null;
+/* The signature code serves both banks: k is 'sign' or 'init'. */
+const KINDS = {
+  sign: { many: 'Signatures', one: 'signature', a: 'a signature', tool: 'sign', empty: 'No signatures yet. Add one for each person who signs (you, your partner…).' },
+  init: { many: 'Initials', one: 'initials', a: 'initials', tool: 'init', empty: 'No initials yet. Add a set for each person (you, your partner…).' },
+};
+const listOf = k => k === 'init' ? inits : sigs;
+const activeOf = k => { const id = k === 'init' ? activeInit : activeSig; return listOf(k).find(s => s.id === id) || null; };
+function setList(k, l) { if (k === 'init') inits = l; else sigs = l; }
+function setActive(k, id) { if (k === 'init') activeInit = id; else activeSig = id; }
+const isBankTool = t => t === 'sign' || t === 'init';
 
 let pdfBytes = null, pdfJsDoc = null, fileName = '', pages = [], isSample = false;
 const els = new Map();
@@ -344,11 +357,11 @@ function trimCanvas(c, padPx = 6) {
 function setTool(t) {
   S.tool = t; document.body.dataset.tool = t;
   document.querySelectorAll('#tools button').forEach(b => b.classList.toggle('active', b.dataset.tool === t));
-  if (t === 'sign' && !getSig(activeSig)) openSigSheet();
+  if (isBankTool(t) && !activeOf(t)) openSigSheet(t);
   renderOpts();
 }
 document.querySelectorAll('#tools button').forEach(b => b.addEventListener('click', () => {
-  if (b.dataset.tool === 'sign' && S.tool === 'sign') { openSigSheet(); return; }
+  if (isBankTool(b.dataset.tool) && S.tool === b.dataset.tool) { openSigSheet(b.dataset.tool); return; }
   setTool(b.dataset.tool);
 }));
 
@@ -359,7 +372,7 @@ function renderOpts() {
   const bar = $('#optbar'), sel = selItem();
   // An active tool wins over the selected item; the selection still gets its Delete button.
   const ctx = S.tool !== 'select' ? S.tool : (sel ? sel.type : 'select');
-  const it = sel && (sel.type === ctx || (ctx === 'date' && sel.type === 'text')) ? sel : null;
+  const it = sel && (sel.type === ctx || (ctx === 'date' && sel.type === 'text') || (ctx === 'init' && sel.type === 'sign')) ? sel : null;
   const parts = [];
   if (ctx === 'text' || ctx === 'date') {
     parts.push(swatchesHtml(it ? it.color : S.ink));
@@ -371,11 +384,11 @@ function renderOpts() {
     parts.push(swatchesHtml(it ? it.color : S.ink));
     parts.push(`<div class="opt"><span class="lab">Size</span><button class="gbtn" data-act="mark-">−</button><span class="num">${it ? Math.round(it.w) : Math.round(S.markSize)}</span><button class="gbtn" data-act="mark+">+</button></div>`);
     if (!it) parts.push(`<span class="hint">Tap each box to mark it.</span>`);
-  } else if (ctx === 'sign') {
-    const s = getSig(activeSig);
+  } else if (isBankTool(ctx)) {
+    const s = activeOf(ctx);
     if (it) parts.push(`<div class="opt"><span class="lab">Size</span><button class="gbtn" data-act="sig-">−</button><button class="gbtn" data-act="sig+">+</button></div><span class="hint">or drag the corner square.</span>`);
-    else if (s) parts.push(`<button class="sigchip" data-act="sigs"><span class="th"><img src="${s.src}" alt=""></span>${esc(s.name)} ▾</button><span class="hint">Tap the page to sign.</span>`);
-    else parts.push(`<button class="gbtn primary" data-act="sigs">Create a signature</button>`);
+    else if (s) parts.push(`<button class="sigchip" data-act="sigs" data-kind="${ctx}"><span class="th"><img src="${s.src}" alt=""></span>${esc(s.name)} ▾</button><span class="hint">Tap the page to ${ctx === 'init' ? 'initial' : 'sign'}.</span>`);
+    else parts.push(`<button class="gbtn primary" data-act="sigs" data-kind="${ctx}">Create ${KINDS[ctx].a}</button>`);
   } else {
     parts.push(`<span class="hint">${pages.length ? 'Pick a tool below, then tap the page.' : ''}</span>`);
   }
@@ -404,9 +417,9 @@ $('#optbar').addEventListener('click', e => {
   } else if (act === 'sig-' || act === 'sig+') {
     if (it && it.type === 'sign') {
       pushUndo(); const k = act === 'sig+' ? 1.1 : 1 / 1.1;
-      it.w = clamp(it.w * k, 20, 600); it.h = it.w / it.aspect; placeEl(it); store.set('sigW', Math.round(it.w));
+      it.w = clamp(it.w * k, 8, 600); it.h = it.w / it.aspect; placeEl(it); rememberSize(it);
     }
-  } else if (act === 'sigs') openSigSheet();
+  } else if (act === 'sigs') openSigSheet(b.dataset.kind || 'sign');
   else if (act === 'delete' && it) removeItem(it.id, true);
 });
 $('#optbar').addEventListener('change', e => {
@@ -640,16 +653,19 @@ function placeAt(pg, x, y) {
     const s = S.markSize;
     pushUndo();
     addItem({ ...base, type: t, w: s, h: s, x: x - s / 2, y: y - s / 2 });
-  } else if (t === 'sign') {
-    const sg = getSig(activeSig);
-    if (!sg) { openSigSheet(); return; }
-    let w = store.get('sigW', 130), h = w / sg.aspect;
-    if (h > 60) { h = 60; w = h * sg.aspect; }
+  } else if (isBankTool(t)) {
+    const sg = activeOf(t);
+    if (!sg) { openSigSheet(t); return; }
+    let w, h;
+    if (t === 'init') { h = store.get('initH', 20); w = h * sg.aspect; if (w > 90) { w = 90; h = w / sg.aspect; } }
+    else { w = store.get('sigW', 130); h = w / sg.aspect; if (h > 60) { h = 60; w = h * sg.aspect; } }
     pushUndo();
-    addItem({ ...base, type: 'sign', src: sg.src, aspect: sg.aspect, w, h, x: x - w / 2, y: y - h * 0.7 });
+    addItem({ ...base, type: 'sign', src: sg.src, aspect: sg.aspect, w, h, x: x - w / 2, y: y - h * (t === 'init' ? 0.5 : 0.7), ...(t === 'init' ? { init: true } : {}) });
     setTool('select');
   }
 }
+/* The next signature or initials come in at the size last chosen for that kind. */
+function rememberSize(it) { if (it.init) store.set('initH', Math.round(it.h * 2) / 2); else store.set('sigW', Math.round(it.w)); }
 
 function onItemDown(e, it) {
   if (e.button > 0 || pinch) return;
@@ -690,14 +706,14 @@ function onResizeDown(e, it) {
     const dx = (ev.clientX - sx) / S.scale, dy = (ev.clientY - sy) / S.scale;
     if (!moved) { moved = true; undoStack.push(snap); }
     if (it.type === 'text') { it.size = Math.round(clamp(ssize * Math.max(0.15, (sw + dx) / sw), 5, 96) * 2) / 2; S.textSize = it.size; }
-    else if (it.type === 'sign') { it.w = clamp(sw + dx, 20, 600); it.h = it.w / it.aspect; }
+    else if (it.type === 'sign') { it.w = clamp(sw + dx, 8, 600); it.h = it.w / it.aspect; }
     else { const v = clamp(sw + Math.max(dx, dy), 5, 150); it.w = it.h = v; S.markSize = Math.round(v * 2) / 2; }
     placeEl(it);
   };
   const up = () => {
     window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
     if (it.type === 'text') { store.set('textSize', S.textSize); renderOpts(); }
-    else if (it.type === 'sign') store.set('sigW', Math.round(it.w));
+    else if (it.type === 'sign') rememberSize(it);
     else store.set('markSize', S.markSize);
   };
   window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
@@ -719,7 +735,7 @@ document.addEventListener('keydown', e => {
     e.preventDefault(); const st = e.shiftKey ? 10 : 1;
     pushUndo(); it.x += arrows[e.key][0] * st; it.y += arrows[e.key][1] * st; placeEl(it); return;
   }
-  const map = { v: 'select', t: 'text', d: 'date', c: 'check', x: 'cross', s: 'sign' };
+  const map = { v: 'select', t: 'text', d: 'date', c: 'check', x: 'cross', s: 'sign', i: 'init' };
   const t = map[e.key.toLowerCase()];
   if (t) { e.preventDefault(); setTool(t); }
 });
@@ -734,7 +750,7 @@ function openSheet(html, onOpen) {
 }
 function closeSheet() {
   $('#sheetwrap').hidden = true; sheet.innerHTML = '';
-  if (S.tool === 'sign' && !getSig(activeSig)) setTool('select');
+  if (isBankTool(S.tool) && !activeOf(S.tool)) setTool('select');
 }
 $('#scrim').addEventListener('click', closeSheet);
 
@@ -773,6 +789,7 @@ async function openAbout() {
       <div class="row"><span class="k">Offline copy</span><span class="v${stale ? ' warn' : ''}">${offline ? 'v' + esc(offline) + (stale ? ' · reload to update' : '') : 'not saved yet'}</span></div>
       <div class="row"><span class="k">Installed</span><span class="v${inst ? ' ok' : ''}">${inst ? 'Yes' : 'No, running in the browser'}</span></div>
       <div class="row"><span class="k">Signatures on this device</span><span class="v">${sigs.length}</span></div>
+      <div class="row"><span class="k">Initials on this device</span><span class="v">${inits.length}</span></div>
     </div>
     <div class="btnrow">
       <button class="btn" data-reload>Hard reload</button>
@@ -825,32 +842,34 @@ sheet.addEventListener('click', async e => {
 });
 
 /* ---------------- signatures: list ---------------- */
-function openSigSheet() {
-  const rows = sigs.map(s => `
-    <div class="sigrow${s.id === activeSig ? ' on' : ''}">
+let SK = 'sign'; // which bank the sheet shows
+function openSigSheet(k = SK) {
+  SK = k; const K = KINDS[k], cur = activeOf(k);
+  const rows = listOf(k).map(s => `
+    <div class="sigrow${cur && s.id === cur.id ? ' on' : ''}">
       <button class="pick" data-pick="${s.id}"><span class="th"><img src="${s.src}" alt=""></span>
-        <span class="nm">${esc(s.name)}<small>${s.id === activeSig ? 'In use' : { draw: 'Drawn', type: 'Typed', upload: 'Uploaded' }[s.kind] || ''}</small></span></button>
+        <span class="nm">${esc(s.name)}<small>${cur && s.id === cur.id ? 'In use' : { draw: 'Drawn', type: 'Typed', upload: 'Uploaded' }[s.kind] || ''}</small></span></button>
       <button class="x" data-del="${s.id}">Delete</button>
     </div>`).join('');
   openSheet(`
-    <h3>Signatures</h3>
+    <h3>${K.many}</h3>
     <p class="sub">Saved on this device. Pick one, then tap the page where it goes.</p>
-    <div class="siglist">${rows || '<div class="emptysig">No signatures yet. Add one for each person who signs (you, your partner…).</div>'}</div>
-    <div class="foot"><button class="btn close" data-close>Close</button><button class="btn primary" data-new>+ New signature</button></div>`);
+    <div class="siglist">${rows || `<div class="emptysig">${K.empty}</div>`}</div>
+    <div class="foot"><button class="btn close" data-close>Close</button><button class="btn primary" data-new>+ New ${K.one}</button></div>`);
 }
 sheet.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.hasAttribute('data-close')) { closeSheet(); return; }
   if (b.hasAttribute('data-new')) { openNewSig(); return; }
   if (b.dataset.pick) {
-    activeSig = b.dataset.pick; saveSigs(); closeSheet(); setTool('sign');
-    toast(`Tap the page to place ${getSig(activeSig).name}'s signature.`); return;
+    setActive(SK, b.dataset.pick); saveSigs(); closeSheet(); setTool(KINDS[SK].tool);
+    toast(`Tap the page to place ${activeOf(SK).name}'s ${KINDS[SK].one}.`); return;
   }
   if (b.dataset.del) {
     // Two taps to delete, as in Slate: the first arms the button.
     if (!b.classList.contains('arm')) { b.classList.add('arm'); b.textContent = 'Sure?'; setTimeout(() => { if (b.isConnected) { b.classList.remove('arm'); b.textContent = 'Delete'; } }, 3000); return; }
-    sigs = sigs.filter(s => s.id !== b.dataset.del);
-    if (activeSig === b.dataset.del) activeSig = sigs[0] ? sigs[0].id : null;
+    setList(SK, listOf(SK).filter(s => s.id !== b.dataset.del));
+    if (!activeOf(SK)) setActive(SK, listOf(SK)[0] ? listOf(SK)[0].id : null);
     saveSigs(); openSigSheet(); renderOpts();
   }
 });
@@ -860,32 +879,38 @@ const FONTS = ['Homemade Apple', 'Mrs Saint Delafield', 'Dancing Script', 'Great
 const NS = { mode: store.get('sigMode', 'draw'), name: '', ink: S.ink, font: store.get('sigFont', FONTS[0]), typed: '', upImg: null, thr: 160, hasInk: false };
 
 function openNewSig() {
-  NS.name = ''; NS.typed = ''; NS.upImg = null; NS.hasInk = false; NS.ink = S.ink;
+  NS.name = ''; NS.typed = ''; NS.upImg = null; NS.hasInk = false; NS.ink = S.ink; NS.shown = false;
+  if (SK === 'sign') NS.mode = store.get('sigMode', 'draw');
   renderNewSig();
 }
 function renderNewSig() {
+  const ini = SK === 'init';
+  // Initials are typed (or drawn), never uploaded; they open on Type.
+  if (ini && (NS.mode === 'upload' || !NS.shown)) NS.mode = 'type';
+  NS.shown = true;
   const m = NS.mode;
+  const sample = NS.typed || (ini ? 'AB' : 'Your name');
   const inks = INKS.map(([c, n]) => `<button class="sw${c === NS.ink ? ' on' : ''}" data-nink="${c}" style="background:${c}" aria-label="${n} ink" title="${n}"></button>`).join('');
   let body = '';
   if (m === 'draw') body = `<div class="padwrap"><canvas id="pad"></canvas><span class="xm">×</span><div class="base"></div><button class="clr" data-clear>Clear</button></div>`;
   else if (m === 'type') body = `
-    <input type="text" id="typed" placeholder="Type your name" value="${esc(NS.typed)}" autocomplete="name" autocapitalize="words">
-    <div class="fonts">${FONTS.map(f => `<button data-font="${esc(f)}" class="${f === NS.font ? 'on' : ''}" style="font-family:'${f}',cursive">${esc(NS.typed || 'Your name')}</button>`).join('')}</div>`;
+    <input type="text" id="typed" placeholder="${ini ? 'Your initials, e.g. J.P.' : 'Type your name'}" value="${esc(NS.typed)}" ${ini ? 'maxlength="8" autocapitalize="characters"' : 'autocomplete="name" autocapitalize="words"'}>
+    <div class="fonts">${FONTS.map(f => `<button data-font="${esc(f)}" class="${f === NS.font ? 'on' : ''}" style="font-family:'${f}',cursive">${esc(sample)}</button>`).join('')}</div>`;
   else body = `
     <div class="upbox" id="upbox">${NS.upImg ? '<canvas id="upcv"></canvas>' : 'Choose a photo or scan of your signature on white paper.<br>The background is removed automatically.'}</div>
     <div class="row"><button class="gbtn" data-choose>${NS.upImg ? 'Choose another image' : 'Choose image'}</button>
       ${NS.upImg ? `<label for="thr">Clean-up</label><input type="range" id="thr" min="60" max="235" value="${NS.thr}">` : ''}</div>`;
   openSheet(`
-    <h3>New signature</h3>
-    <input type="text" id="signame" placeholder="Whose signature? (e.g. Me, Claire)" value="${esc(NS.name)}" autocapitalize="words">
+    <h3>New ${KINDS[SK].one}</h3>
+    <input type="text" id="signame" placeholder="Whose ${KINDS[SK].one}? (e.g. Me, Claire)" value="${esc(NS.name)}" autocapitalize="words">
     <div class="seg" role="tablist">
       <button data-mode="draw" class="${m === 'draw' ? 'on' : ''}">Draw</button>
       <button data-mode="type" class="${m === 'type' ? 'on' : ''}">Type</button>
-      <button data-mode="upload" class="${m === 'upload' ? 'on' : ''}">Upload</button>
+      ${ini ? '' : `<button data-mode="upload" class="${m === 'upload' ? 'on' : ''}">Upload</button>`}
     </div>
     ${body}
     <div class="row"><span class="sec">Ink</span>${inks}</div>
-    <div class="foot"><button class="btn close" data-back>Back</button><button class="btn primary" data-savesig>Save signature</button></div>`, () => {
+    <div class="foot"><button class="btn close" data-back>Back</button><button class="btn primary" data-savesig>Save ${KINDS[SK].one}</button></div>`, () => {
     if (m === 'draw') setupPad();
     if (m === 'upload' && NS.upImg) drawUpload();
   });
@@ -894,12 +919,12 @@ sheet.addEventListener('input', e => {
   if (e.target.id === 'signame') NS.name = e.target.value;
   else if (e.target.id === 'typed') {
     NS.typed = e.target.value;
-    sheet.querySelectorAll('.fonts button').forEach(b => { b.textContent = NS.typed || 'Your name'; });
+    sheet.querySelectorAll('.fonts button').forEach(b => { b.textContent = NS.typed || (SK === 'init' ? 'AB' : 'Your name'); });
   } else if (e.target.id === 'thr') { NS.thr = +e.target.value; drawUpload(); }
 });
 sheet.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.mode) { NS.mode = b.dataset.mode; store.set('sigMode', NS.mode); NS.hasInk = false; renderNewSig(); }
+  if (b.dataset.mode) { NS.mode = b.dataset.mode; if (SK === 'sign') store.set('sigMode', NS.mode); NS.hasInk = false; renderNewSig(); }
   else if (b.dataset.nink) {
     NS.ink = b.dataset.nink;
     sheet.querySelectorAll('[data-nink]').forEach(x => x.classList.toggle('on', x === b));
@@ -1015,15 +1040,16 @@ function drawUpload() {
 
 async function saveNewSig() {
   let c = null;
-  if (NS.mode === 'draw') { if (!NS.hasInk || !pad) { toast('Draw your signature first.'); return; } c = trimCanvas(pad, Math.round(5 * (window.devicePixelRatio || 1))); }
-  else if (NS.mode === 'type') { if (!NS.typed.trim()) { toast('Type your name first.'); return; } c = await typedCanvas(); }
+  const K = KINDS[SK];
+  if (NS.mode === 'draw') { if (!NS.hasInk || !pad) { toast(`Draw your ${K.one} first.`); return; } c = trimCanvas(pad, Math.round(5 * (window.devicePixelRatio || 1))); }
+  else if (NS.mode === 'type') { if (!NS.typed.trim()) { toast(SK === 'init' ? 'Type your initials first.' : 'Type your name first.'); return; } c = await typedCanvas(); }
   else { if (!NS.upImg) { toast('Choose an image first.'); return; } c = trimCanvas(uploadCanvas(), 6); }
   if (!c) { toast('Nothing to save: the signature is empty. Try a lower clean-up value.'); return; }
-  const name = NS.name.trim() || (NS.mode === 'type' ? NS.typed.trim() : `Signature ${sigs.length + 1}`);
+  const name = NS.name.trim() || (NS.mode === 'type' ? NS.typed.trim() : `${SK === 'init' ? 'Initials' : 'Signature'} ${listOf(SK).length + 1}`);
   const s = { id: uid(), name, src: c.toDataURL('image/png'), aspect: c.width / c.height, kind: NS.mode };
-  sigs.push(s); activeSig = s.id; saveSigs();
-  closeSheet(); setTool('sign');
-  toast(`Saved. Tap the page to place ${name}'s signature.`);
+  setList(SK, [...listOf(SK), s]); setActive(SK, s.id); saveSigs();
+  closeSheet(); setTool(K.tool);
+  toast(`Saved. Tap the page to place ${name}'s ${K.one}.`);
 }
 
 /* ---------------- file open / drop ---------------- */

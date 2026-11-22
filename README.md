@@ -1,6 +1,6 @@
 # Filler
 
-Fill in PDF forms fast, on a phone or a computer: type text, drop in today's date, tick boxes with a check or an X, and sign. Everything runs on your device. The PDF is never uploaded.
+Fill in PDF forms fast, on a phone or a computer: type text, drop in today's date, tick boxes with a check or an X, sign and initial. Everything runs on your device. The PDF is never uploaded.
 
 **Live app: https://jpasserin.github.io/filler/**
 
@@ -19,6 +19,7 @@ It installs like the other apps in the family (Tally, Slate, Bench): on a phone 
    | Check | `C` | ✓ mark. Stays active so you can tick several boxes |
    | X | `X` | ✗ mark. Stays active too |
    | Sign | `S` | Places the chosen signature |
+   | Initials | `I` | Places the chosen initials |
 
 3. The strip above the tools has **Size −/+** and **Delete** for the selected item (or drag the outlined square at an item's corner). **Undo** is in the header (`Ctrl+Z`). Pinch to zoom on a phone.
 4. **Download** saves `<name>-filled.pdf`. On a phone it opens the share sheet, so you can save it to Files or send it straight away.
@@ -31,7 +32,11 @@ Keep as many as you need, one per person (you, your partner…). Each one is mad
 - **Type** a name and pick one of eight handwriting fonts.
 - **Upload** a photo or scan of a signature on white paper. The paper is removed automatically and the ink recolored black or blue. A *Clean-up* slider handles shadows or faint ink.
 
-Signatures are saved in this browser's storage and are there next time you open the app. They never leave the device. To use them on another phone or computer, create them there too.
+## Initials
+
+The **Initials** tool works the same way: one set per person, typed in any of the handwriting fonts (or drawn). They come in small, sized for an initials box, and keep the size you last gave them.
+
+Signatures and initials are saved in this browser's storage and are there next time you open the app. They never leave the device. To use them on another phone or computer, create them there too.
 
 ## How it works
 
